@@ -1,5 +1,6 @@
 import { FastifyInstance } from 'fastify';
 import { z } from 'zod';
+import { getAuthUser } from '../utils/auth';
 
 const createProjectSchema = z.object({
   name: z.string().min(1).max(100),
@@ -15,6 +16,7 @@ const updateProjectSchema = createProjectSchema.partial();
 export async function projectRoutes(app: FastifyInstance) {
   // Get all projects (with pagination)
   app.get('/', { preHandler: [app.authenticate] }, async (request, reply) => {
+    const user = getAuthUser(request);
     const query = z.object({
       page: z.coerce.number().positive().default(1),
       limit: z.coerce.number().positive().max(100).default(20),
@@ -24,8 +26,8 @@ export async function projectRoutes(app: FastifyInstance) {
 
     const where: any = {
       OR: [
-        { ownerId: request.user.userId },
-        { collaborators: { some: { userId: request.user.userId } } },
+        { ownerId: user.userId },
+        { collaborators: { some: { userId: user.userId } } },
       ],
     };
 
@@ -63,12 +65,13 @@ export async function projectRoutes(app: FastifyInstance) {
 
   // Create project
   app.post('/', { preHandler: [app.authenticate] }, async (request, reply) => {
+    const user = getAuthUser(request);
     const data = createProjectSchema.parse(request.body);
 
     const project = await app.prisma.project.create({
       data: {
         ...data,
-        ownerId: request.user.userId,
+        ownerId: user.userId,
         simulationConfig: {
           board: data.board,
           frequency: 240_000_000,
@@ -86,14 +89,15 @@ export async function projectRoutes(app: FastifyInstance) {
 
   // Get single project
   app.get('/:id', { preHandler: [app.authenticate] }, async (request, reply) => {
+    const user = getAuthUser(request);
     const { id } = z.object({ id: z.string().cuid() }).parse(request.params);
 
     const project = await app.prisma.project.findFirst({
       where: {
         id,
         OR: [
-          { ownerId: request.user.userId },
-          { collaborators: { some: { userId: request.user.userId } } },
+          { ownerId: user.userId },
+          { collaborators: { some: { userId: user.userId } } },
           { isPublic: true },
         ],
       },
@@ -112,12 +116,13 @@ export async function projectRoutes(app: FastifyInstance) {
 
   // Update project
   app.patch('/:id', { preHandler: [app.authenticate] }, async (request, reply) => {
+    const user = getAuthUser(request);
     const { id } = z.object({ id: z.string().cuid() }).parse(request.params);
     const data = updateProjectSchema.parse(request.body);
 
     // Check ownership
     const project = await app.prisma.project.findFirst({
-      where: { id, ownerId: request.user.userId },
+      where: { id, ownerId: user.userId },
     });
 
     if (!project) {
@@ -144,10 +149,11 @@ export async function projectRoutes(app: FastifyInstance) {
 
   // Delete project
   app.delete('/:id', { preHandler: [app.authenticate] }, async (request, reply) => {
+    const user = getAuthUser(request);
     const { id } = z.object({ id: z.string().cuid() }).parse(request.params);
 
     const project = await app.prisma.project.findFirst({
-      where: { id, ownerId: request.user.userId },
+      where: { id, ownerId: user.userId },
     });
 
     if (!project) {
@@ -161,12 +167,13 @@ export async function projectRoutes(app: FastifyInstance) {
 
   // Fork project
   app.post('/:id/fork', { preHandler: [app.authenticate] }, async (request, reply) => {
+    const user = getAuthUser(request);
     const { id } = z.object({ id: z.string().cuid() }).parse(request.params);
 
     const original = await app.prisma.project.findFirst({
       where: {
         id,
-        OR: [{ ownerId: request.user.userId }, { isPublic: true }],
+        OR: [{ ownerId: user.userId }, { isPublic: true }],
       },
     });
 
@@ -186,7 +193,7 @@ export async function projectRoutes(app: FastifyInstance) {
         simulationConfig: original.simulationConfig,
         isPublic: false,
         tags: [...original.tags, 'fork'],
-        ownerId: request.user.userId,
+        ownerId: user.userId,
       },
     });
 
@@ -195,10 +202,11 @@ export async function projectRoutes(app: FastifyInstance) {
 
   // Collaborators
   app.get('/:id/collaborators', { preHandler: [app.authenticate] }, async (request, reply) => {
+    const user = getAuthUser(request);
     const { id } = z.object({ id: z.string().cuid() }).parse(request.params);
 
     const project = await app.prisma.project.findFirst({
-      where: { id, ownerId: request.user.userId },
+      where: { id, ownerId: user.userId },
       include: {
         collaborators: { include: { user: { select: { id: true, name: true, email: true } } } },
       },
@@ -212,6 +220,7 @@ export async function projectRoutes(app: FastifyInstance) {
   });
 
   app.post('/:id/collaborators', { preHandler: [app.authenticate] }, async (request, reply) => {
+    const authUser = getAuthUser(request);
     const { id } = z.object({ id: z.string().cuid() }).parse(request.params);
     const schema = z.object({
       email: z.string().email(),
@@ -220,21 +229,21 @@ export async function projectRoutes(app: FastifyInstance) {
     const data = schema.parse(request.body);
 
     const project = await app.prisma.project.findFirst({
-      where: { id, ownerId: request.user.userId },
+      where: { id, ownerId: authUser.userId },
     });
 
     if (!project) {
       return reply.code(403).send({ error: 'Not authorized' });
     }
 
-    const user = await app.prisma.user.findUnique({ where: { email: data.email } });
-    if (!user) {
+    const collaboratorUser = await app.prisma.user.findUnique({ where: { email: data.email } });
+    if (!collaboratorUser) {
       return reply.code(404).send({ error: 'User not found' });
     }
 
     const collaborator = await app.prisma.collaboration.upsert({
-      where: { projectId_userId: { projectId: id, userId: user.id } },
-      create: { projectId: id, userId: user.id, role: data.role },
+      where: { projectId_userId: { projectId: id, userId: collaboratorUser.id } },
+      create: { projectId: id, userId: collaboratorUser.id, role: data.role },
       update: { role: data.role },
       include: { user: { select: { id: true, name: true, email: true } } },
     });
@@ -243,10 +252,11 @@ export async function projectRoutes(app: FastifyInstance) {
   });
 
   app.delete('/:id/collaborators/:userId', { preHandler: [app.authenticate] }, async (request, reply) => {
+    const user = getAuthUser(request);
     const { id, userId } = z.object({ id: z.string().cuid(), userId: z.string().cuid() }).parse(request.params);
 
     const project = await app.prisma.project.findFirst({
-      where: { id, ownerId: request.user.userId },
+      where: { id, ownerId: user.userId },
     });
 
     if (!project) {

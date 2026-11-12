@@ -1,7 +1,11 @@
 import { FastifyInstance } from 'fastify';
 import { z } from 'zod';
+import { getAuthUser } from '../utils/auth';
+import { createAIProvider } from '../services/ai';
 
 export async function aiRoutes(app: FastifyInstance) {
+  const aiProvider = createAIProvider();
+
   // Generate project from prompt
   app.post('/generate', { preHandler: [app.authenticate] }, async (request, reply) => {
     const schema = z.object({
@@ -11,31 +15,54 @@ export async function aiRoutes(app: FastifyInstance) {
     });
     const data = schema.parse(request.body);
 
-    // TODO: Call AI service (Claude/GPT-4o) with RAG
-    // For now, return mock response
-    
-    const mockProject = {
-      name: 'Generated Project',
-      description: data.prompt,
-      mode: 'MAGIC' as const,
-      board: data.board,
-      components: [],
-      wires: [],
-      code: `// Generated from: "${data.prompt}"\n\nvoid setup() {\n  Serial.begin(115200);\n}\n\nvoid loop() {\n  delay(100);\n}`,
-      simulationConfig: {
-        board: data.board,
-        frequency: 240_000_000,
-        peripherals: [],
-        virtualSensors: [],
-      },
-    };
+    if (!aiProvider) {
+      return reply.code(503).send({ 
+        error: 'AI service not configured. Set ANTHROPIC_API_KEY or OPENAI_API_KEY.' 
+      });
+    }
 
-    return reply.send({
-      project: mockProject,
-      explanation: 'This project was generated based on your prompt...',
-      warnings: [],
-      suggestions: ['Add a capacitor for power stability', 'Consider pull-up resistors for I2C'],
-    });
+    try {
+      // Get available components from database
+      const components = await app.prisma.component.findMany({
+        select: { id: true, name: true, category: true, pins: true, metadata: true }
+      });
+
+      const componentInfos = components.map(c => ({
+        id: c.id,
+        name: c.name,
+        category: c.category,
+        pins: JSON.parse(c.pins) as any[],
+        metadata: JSON.parse(c.metadata) as Record<string, unknown>
+      }));
+
+      const result = await aiProvider.generateProject(data.prompt, data.board, componentInfos);
+      
+      // Save project to database
+      const user = getAuthUser(request);
+      const project = await app.prisma.project.create({
+        data: {
+          name: result.project.name,
+          description: result.project.description,
+          mode: 'MAGIC',
+          board: result.project.board,
+          components: JSON.stringify(result.project.components),
+          wires: JSON.stringify(result.project.wires),
+          code: result.project.code,
+          simulationConfig: JSON.stringify(result.project.simulationConfig),
+          ownerId: user.userId,
+        },
+      });
+
+      return reply.send({
+        project: { ...result.project, id: project.id },
+        explanation: result.explanation,
+        warnings: result.warnings,
+        suggestions: result.suggestions,
+      });
+    } catch (error) {
+      app.log.error(error);
+      return reply.code(500).send({ error: 'Failed to generate project' });
+    }
   });
 
   // AI Chat / Debugging assistant
@@ -51,16 +78,43 @@ export async function aiRoutes(app: FastifyInstance) {
     });
     const data = schema.parse(request.body);
 
-    // TODO: Call AI with context
-    const response = `I understand you're asking about "${data.message}". Let me analyze your project...`;
+    if (!aiProvider) {
+      return reply.code(503).send({ 
+        error: 'AI service not configured. Set ANTHROPIC_API_KEY or OPENAI_API_KEY.' 
+      });
+    }
 
-    return reply.send({
-      response,
-      actions: [
-        { type: 'explanation', description: 'Explain the issue' },
-        { type: 'fix', description: 'Apply suggested fix' },
-      ],
-    });
+    try {
+      let context: any = data.context;
+      
+      // Load project context if provided
+      if (data.projectId) {
+        const project = await app.prisma.project.findFirst({
+          where: { id: data.projectId },
+        });
+        if (project) {
+          context = {
+            ...context,
+            schematic: {
+              components: JSON.parse(project.components as string),
+              wires: JSON.parse(project.wires as string),
+            },
+            code: project.code,
+            simulationConfig: JSON.parse(project.simulationConfig as string),
+          };
+        }
+      }
+
+      const response = await aiProvider.chat(
+        [{ role: 'user', content: data.message }],
+        context
+      );
+
+      return reply.send({ response });
+    } catch (error) {
+      app.log.error(error);
+      return reply.code(500).send({ error: 'Failed to process chat' });
+    }
   });
 
   // Analyze schematic for issues
@@ -71,13 +125,19 @@ export async function aiRoutes(app: FastifyInstance) {
     });
     const data = schema.parse(request.body);
 
-    // TODO: Run DRC and electrical analysis
-    const issues = [
-      { type: 'warning', message: 'Missing pull-up resistors on I2C lines', severity: 'medium' },
-      { type: 'error', message: 'Pin conflict: GPIO 21 used by two components', severity: 'high' },
-    ];
+    if (!aiProvider) {
+      return reply.code(503).send({ 
+        error: 'AI service not configured. Set ANTHROPIC_API_KEY or OPENAI_API_KEY.' 
+      });
+    }
 
-    return reply.send({ issues, suggestions: ['Add 4.7kΩ pull-ups to SDA/SCL', 'Reassign GPIO pins'] });
+    try {
+      const result = await aiProvider.analyzeSchematic(data.components, data.wires);
+      return reply.send(result);
+    } catch (error) {
+      app.log.error(error);
+      return reply.code(500).send({ error: 'Failed to analyze schematic' });
+    }
   });
 
   // Suggest component alternatives
@@ -89,12 +149,22 @@ export async function aiRoutes(app: FastifyInstance) {
     });
     const data = schema.parse(request.body);
 
-    // TODO: Query component database with embeddings
-    const suggestions = [
-      { id: '1', name: 'BME280', reason: 'Combines temp/humidity/pressure in one sensor', price: 3.50 },
-      { id: '2', name: 'BMP280', reason: 'Lower cost alternative, temp/pressure only', price: 2.00 },
-    ];
+    if (!aiProvider) {
+      return reply.code(503).send({ 
+        error: 'AI service not configured. Set ANTHROPIC_API_KEY or OPENAI_API_KEY.' 
+      });
+    }
 
-    return reply.send({ suggestions });
+    try {
+      const suggestions = await aiProvider.suggestComponents(
+        data.requirements,
+        data.currentComponents || [],
+        data.budget
+      );
+      return reply.send({ suggestions });
+    } catch (error) {
+      app.log.error(error);
+      return reply.code(500).send({ error: 'Failed to suggest components' });
+    }
   });
 }

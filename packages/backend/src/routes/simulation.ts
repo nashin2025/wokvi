@@ -1,9 +1,11 @@
 import { FastifyInstance } from 'fastify';
 import { z } from 'zod';
+import { getAuthUser } from '../utils/auth';
 
 export async function simulationRoutes(app: FastifyInstance) {
   // Start simulation session
   app.post('/sessions', { preHandler: [app.authenticate] }, async (request, reply) => {
+    const user = getAuthUser(request);
     const schema = z.object({
       projectId: z.string().cuid(),
       config: z.object({
@@ -20,8 +22,8 @@ export async function simulationRoutes(app: FastifyInstance) {
       where: {
         id: data.projectId,
         OR: [
-          { ownerId: request.user.userId },
-          { collaborators: { some: { userId: request.user.userId } } },
+          { ownerId: user.userId },
+          { collaborators: { some: { userId: user.userId } } },
         ],
       },
     });
@@ -33,7 +35,7 @@ export async function simulationRoutes(app: FastifyInstance) {
     const session = await app.prisma.simulationSession.create({
       data: {
         projectId: data.projectId,
-        userId: request.user.userId,
+        userId: user.userId,
         status: 'RUNNING',
         config: data.config,
       },
@@ -47,12 +49,13 @@ export async function simulationRoutes(app: FastifyInstance) {
 
   // Get simulation session
   app.get('/sessions/:id', { preHandler: [app.authenticate] }, async (request, reply) => {
+    const user = getAuthUser(request);
     const { id } = z.object({ id: z.string().cuid() }).parse(request.params);
 
     const session = await app.prisma.simulationSession.findFirst({
       where: {
         id,
-        userId: request.user.userId,
+        userId: user.userId,
       },
     });
 
@@ -65,6 +68,7 @@ export async function simulationRoutes(app: FastifyInstance) {
 
   // Update simulation session (logs, status)
   app.patch('/sessions/:id', { preHandler: [app.authenticate] }, async (request, reply) => {
+    const user = getAuthUser(request);
     const { id } = z.object({ id: z.string().cuid() }).parse(request.params);
     const schema = z.object({
       status: z.enum(['STOPPED', 'RUNNING', 'PAUSED', 'ERROR', 'COMPLETED']).optional(),
@@ -73,7 +77,7 @@ export async function simulationRoutes(app: FastifyInstance) {
     const data = schema.parse(request.body);
 
     const session = await app.prisma.simulationSession.findFirst({
-      where: { id, userId: request.user.userId },
+      where: { id, userId: user.userId },
     });
 
     if (!session) {

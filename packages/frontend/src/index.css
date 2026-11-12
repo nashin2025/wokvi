@@ -13,7 +13,7 @@
   }
 
   body {
-    @apply bg-surface-50 text-surface-900 dark:bg-surface-950 dark:text-surface-50;
+    @apply bg-surface-50 text-surface-900 dark:bg-surface-900 dark:text-surface-50;
     font-feature-settings: "cv02", "cv03", "cv04", "cv11";
   }
 

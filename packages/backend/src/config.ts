@@ -25,4 +25,8 @@ export const config = {
     max: 100,
     timeWindow: '1 minute',
   },
+  
+  // AI Services
+  anthropicApiKey: process.env.ANTHROPIC_API_KEY || '',
+  openaiApiKey: process.env.OPENAI_API_KEY || '',
 };

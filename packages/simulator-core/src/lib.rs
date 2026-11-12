@@ -1,19 +1,20 @@
 //! Wokvi Simulator Core
-//! 
 //! Multi-architecture microcontroller simulator compiled to WebAssembly
 //! Supports AVR (ATmega328P), ESP32, RP2040, and STM32
 
 #![cfg_attr(target_arch = "wasm32", no_std)]
 
+#[cfg(target_arch = "wasm32")]
 extern crate alloc;
 
 #[cfg(target_arch = "wasm32")]
-use alloc::{vec::Vec, string::String, collections::BTreeMap, format};
+use alloc::{vec, vec::Vec, string::String, string::ToString, collections::BTreeMap, format, boxed::Box};
 #[cfg(not(target_arch = "wasm32"))]
-use std::{vec::Vec, string::String, collections::BTreeMap};
+use std::{vec::Vec, string::String, collections::BTreeMap, format, boxed::Box};
 
 use serde::{Deserialize, Serialize};
 use wasm_bindgen::prelude::*;
+use serde_wasm_bindgen::{to_value, from_value};
 
 #[cfg(target_arch = "wasm32")]
 #[wasm_bindgen(start)]
@@ -26,9 +27,8 @@ pub mod arch;
 pub mod peripherals;
 pub mod simulation;
 
-pub use simulation::{Simulator, SimulatorConfig, SimulationState, StepResult};
-pub use arch::{Architecture, BoardType, CpuState};
-pub use peripherals::{Peripheral, PeripheralType, GpioPort, Uart, I2c, Spi, Adc, Pwm, Timer};
+pub use simulation::Simulator;
+pub use peripherals::{GpioPort, Uart, I2c, Spi, Adc, Pwm, Timer};
 
 /// Main entry point for WASM
 #[wasm_bindgen]
@@ -40,7 +40,7 @@ pub struct WasmSimulator {
 impl WasmSimulator {
     #[wasm_bindgen(constructor)]
     pub fn new(config: JsValue) -> Result<WasmSimulator, JsValue> {
-        let config: SimulatorConfig = serde_wasm_bindgen::from_value(config)?;
+        let config: SimulatorConfig = from_value(config)?;
         let simulator = Simulator::new(config);
         Ok(WasmSimulator { inner: simulator })
     }
@@ -48,7 +48,7 @@ impl WasmSimulator {
     #[wasm_bindgen]
     pub fn step(&mut self) -> Result<JsValue, JsValue> {
         let result = self.inner.step();
-        serde_wasm_bindgen::to_value(&result).map_err(|e| JsValue::from_str(&e.to_string()))
+        to_value(&result).map_err(|e| JsValue::from_str(&e.to_string()))
     }
 
     #[wasm_bindgen]
@@ -61,13 +61,13 @@ impl WasmSimulator {
             }
             results.push(result);
         }
-        serde_wasm_bindgen::to_value(&results).map_err(|e| JsValue::from_str(&e.to_string()))
+        to_value(&results).map_err(|e| JsValue::from_str(&e.to_string()))
     }
 
     #[wasm_bindgen]
     pub fn get_state(&self) -> Result<JsValue, JsValue> {
         let state = self.inner.get_state();
-        serde_wasm_bindgen::to_value(&state).map_err(|e| JsValue::from_str(&e.to_string()))
+        to_value(&state).map_err(|e| JsValue::from_str(&e.to_string()))
     }
 
     #[wasm_bindgen]
@@ -114,9 +114,8 @@ pub enum BoardType {
     Custom,
 }
 
-/// Simulator configuration
+/// Simulator configuration - use primitives for WASM compatibility
 #[derive(Debug, Clone, Serialize, Deserialize)]
-#[wasm_bindgen]
 pub struct SimulatorConfig {
     pub architecture: Architecture,
     pub board: BoardType,
@@ -125,9 +124,7 @@ pub struct SimulatorConfig {
     pub enable_peripherals: Vec<PeripheralType>,
 }
 
-#[wasm_bindgen]
 impl SimulatorConfig {
-    #[wasm_bindgen(constructor)]
     pub fn new(architecture: Architecture, board: BoardType) -> Self {
         Self {
             architecture,
@@ -139,10 +136,10 @@ impl SimulatorConfig {
                 Architecture::Stm32 => 168_000_000,
             },
             memory_size: match architecture {
-                Architecture::Avr => 2048,      // 2KB SRAM
-                Architecture::Esp32 => 327_680, // ~320KB SRAM
-                Architecture::Rp2040 => 264_000, // 264KB SRAM
-                Architecture::Stm32 => 196_608, // 192KB SRAM
+                Architecture::Avr => 2048,
+                Architecture::Esp32 => 327_680,
+                Architecture::Rp2040 => 264_000,
+                Architecture::Stm32 => 196_608,
             },
             enable_peripherals: vec![
                 PeripheralType::Gpio,
@@ -177,33 +174,52 @@ pub enum PeripheralType {
 
 /// Simulation step result
 #[derive(Debug, Clone, Serialize, Deserialize)]
-#[wasm_bindgen]
 pub enum StepResult {
-    Ok,
+    Success,
     Halted,
     BreakpointHit(u32),
     Error(String),
 }
 
-/// CPU register state
+/// CPU register state - using Vec for WASM compatibility
 #[derive(Debug, Clone, Serialize, Deserialize)]
-#[wasm_bindgen]
 pub struct CpuState {
     pub pc: u32,
     pub sp: u32,
-    pub registers: Vec<u32>,
+    registers: Vec<u32>,
     pub flags: u32,
     pub cycles: u64,
 }
 
+impl CpuState {
+    pub fn new() -> Self {
+        Self {
+            pc: 0,
+            sp: 0,
+            registers: vec![0; 32],
+            flags: 0,
+            cycles: 0,
+        }
+    }
+
+    pub fn get_register(&self, index: usize) -> u32 {
+        self.registers.get(index).copied().unwrap_or(0)
+    }
+
+    pub fn set_register(&mut self, index: usize, value: u32) {
+        if index < self.registers.len() {
+            self.registers[index] = value;
+        }
+    }
+}
+
 /// Full simulation state
 #[derive(Debug, Clone, Serialize, Deserialize)]
-#[wasm_bindgen]
 pub struct SimulationState {
     pub cpu: CpuState,
-    pub memory: Vec<u8>,
-    pub peripherals: BTreeMap<String, PeripheralState>,
-    pub gpio_state: BTreeMap<u32, bool>,
+    memory: Vec<u8>,
+    peripherals: Vec<PeripheralState>,
+    gpio_state: Vec<GpioStateEntry>,
     pub serial_output: Vec<String>,
     pub timestamp: u64,
     pub status: SimulationStatus,
@@ -219,82 +235,44 @@ pub enum SimulationStatus {
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
-#[wasm_bindgen]
 pub struct PeripheralState {
     pub peripheral_type: PeripheralType,
-    pub registers: BTreeMap<u32, u32>,
-    pub config: BTreeMap<String, String>,
+    registers: Vec<RegisterEntry>,
+    config: Vec<ConfigEntry>,
 }
 
-/// GPIO Port
-#[wasm_bindgen]
-pub struct GpioPort {
-    port: char,
-    pins: u8,
-    direction: u8,
-    output: u8,
-    input: u8,
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct RegisterEntry {
+    pub address: u32,
+    pub value: u32,
 }
 
-#[wasm_bindgen]
-impl GpioPort {
-    #[wasm_bindgen(constructor)]
-    pub fn new(port: char, pins: u8) -> Self {
-        Self {
-            port,
-            pins,
-            direction: 0,
-            output: 0,
-            input: 0,
-        }
-    }
-
-    pub fn set_direction(&mut self, pin: u8, output: bool) {
-        if output {
-            self.direction |= 1 << pin;
-        } else {
-            self.direction &= !(1 << pin);
-        }
-    }
-
-    pub fn write(&mut self, pin: u8, value: bool) {
-        if value {
-            self.output |= 1 << pin;
-        } else {
-            self.output &= !(1 << pin);
-        }
-    }
-
-    pub fn read(&self, pin: u8) -> bool {
-        (self.input >> pin) & 1 == 1
+impl RegisterEntry {
+    pub fn new(address: u32, value: u32) -> Self {
+        Self { address, value }
     }
 }
 
-/// UART peripheral
-#[wasm_bindgen]
-pub struct Uart {
-    baud_rate: u32,
-    tx_buffer: Vec<u8>,
-    rx_buffer: Vec<u8>,
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct ConfigEntry {
+    pub key: String,
+    pub value: String,
 }
 
-#[wasm_bindgen]
-impl Uart {
-    #[wasm_bindgen(constructor)]
-    pub fn new(baud_rate: u32) -> Self {
-        Self {
-            baud_rate,
-            tx_buffer: Vec::new(),
-            rx_buffer: Vec::new(),
-        }
+impl ConfigEntry {
+    pub fn new(key: String, value: String) -> Self {
+        Self { key, value }
     }
+}
 
-    pub fn write(&mut self, data: &[u8]) {
-        self.tx_buffer.extend_from_slice(data);
-    }
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct GpioStateEntry {
+    pub pin_id: u32,
+    pub value: bool,
+}
 
-    pub fn read(&mut self, len: usize) -> Vec<u8> {
-        let n = len.min(self.rx_buffer.len());
-        self.rx_buffer.drain(..n).collect()
+impl GpioStateEntry {
+    pub fn new(pin_id: u32, value: bool) -> Self {
+        Self { pin_id, value }
     }
 }

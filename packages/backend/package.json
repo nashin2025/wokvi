@@ -16,27 +16,30 @@
     "db:studio": "prisma studio"
   },
   "dependencies": {
-    "fastify": "^4.28.0",
+    "@anthropic-ai/sdk": "^1.8.0",
     "@fastify/cors": "^9.0.0",
-    "@fastify/websocket": "^10.0.0",
     "@fastify/jwt": "^8.0.0",
     "@fastify/rate-limit": "^9.0.0",
+    "@fastify/websocket": "^10.0.0",
     "@prisma/client": "^5.15.0",
-    "ioredis": "^5.4.0",
-    "zod": "^3.23.0",
     "bcryptjs": "^2.4.3",
+    "fastify": "^4.28.0",
+    "fastify-plugin": "^6.0.1",
+    "ioredis": "^5.4.0",
     "jsonwebtoken": "^9.0.0",
+    "openai": "^7.55.0",
     "pino": "^9.0.0",
-    "pino-pretty": "^11.0.0"
+    "pino-pretty": "^11.0.0",
+    "zod": "^3.23.0"
   },
   "devDependencies": {
-    "@types/node": "^20.14.0",
     "@types/bcryptjs": "^2.4.6",
     "@types/jsonwebtoken": "^9.0.6",
-    "typescript": "^5.5.0",
-    "tsx": "^4.15.0",
-    "vitest": "^1.6.0",
+    "@types/node": "^20.14.0",
+    "eslint": "^8.57.0",
     "prisma": "^5.15.0",
-    "eslint": "^8.57.0"
+    "tsx": "^4.15.0",
+    "typescript": "^5.5.0",
+    "vitest": "^1.6.0"
   }
 }

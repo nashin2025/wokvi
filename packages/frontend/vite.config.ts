@@ -9,7 +9,7 @@ export default defineConfig(({ mode }) => {
   return {
     plugins: [
       react(),
-      !isTest && monacoEditorPlugin({
+      !isTest && monacoEditorPlugin.default({
         languageWorkers: ['editorWorkerService', 'typescript'],
       }),
     ].filter(Boolean),

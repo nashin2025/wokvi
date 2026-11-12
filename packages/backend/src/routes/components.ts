@@ -1,5 +1,6 @@
 import { FastifyInstance } from 'fastify';
 import { z } from 'zod';
+import { getAuthUser } from '../utils/auth';
 
 export async function componentRoutes(app: FastifyInstance) {
   // Get all components with filtering
@@ -56,7 +57,8 @@ export async function componentRoutes(app: FastifyInstance) {
 
   // Create component (admin only)
   app.post('/', { preHandler: [app.authenticate] }, async (request, reply) => {
-    if (request.user.role !== 'ADMIN') {
+    const user = getAuthUser(request);
+    if (user.role !== 'ADMIN') {
       return reply.code(403).send({ error: 'Admin only' });
     }
 

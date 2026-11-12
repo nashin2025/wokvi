@@ -1,6 +1,7 @@
 import { FastifyInstance } from 'fastify';
 import { z } from 'zod';
 import bcrypt from 'bcryptjs';
+import { getAuthUser } from '../utils/auth';
 
 const registerSchema = z.object({
   email: z.string().email(),
@@ -69,8 +70,9 @@ export async function authRoutes(app: FastifyInstance) {
 
   // Get current user
   app.get('/me', { preHandler: [app.authenticate] }, async (request, reply) => {
+    const authUser = getAuthUser(request);
     const user = await app.prisma.user.findUnique({
-      where: { id: request.user.userId },
+      where: { id: authUser.userId },
       select: { id: true, email: true, name: true, role: true, preferences: true, createdAt: true },
     });
     
@@ -83,6 +85,7 @@ export async function authRoutes(app: FastifyInstance) {
 
   // Update preferences
   app.patch('/preferences', { preHandler: [app.authenticate] }, async (request, reply) => {
+    const authUser = getAuthUser(request);
     const schema = z.object({
       theme: z.enum(['light', 'dark', 'system']).optional(),
       mode: z.enum(['MAGIC', 'GUIDED', 'PRO']).optional(),
@@ -94,10 +97,10 @@ export async function authRoutes(app: FastifyInstance) {
     const data = schema.parse(request.body);
     
     const user = await app.prisma.user.update({
-      where: { id: request.user.userId },
+      where: { id: authUser.userId },
       data: {
         preferences: {
-          ...(request.user.preferences as object),
+          ...(authUser.preferences as object),
           ...data,
         },
       },
@@ -107,22 +110,3 @@ export async function authRoutes(app: FastifyInstance) {
     return reply.send({ user });
   });
 }
-
-// Add authenticate hook
-declare module 'fastify' {
-  interface FastifyRequest {
-    user: {
-      userId: string;
-      email: string;
-      role: string;
-      preferences?: Record<string, unknown>;
-    } | null;
-  }
-  
-  interface FastifyInstance {
-    authenticate: (request: FastifyRequest, reply: FastifyReply) => Promise<void>;
-  }
-}
-
-// This would be added in plugins/index.ts
-// app.addHook('preHandler', async (request) => { ... })

@@ -1,14 +1,16 @@
 import { FastifyInstance } from 'fastify';
 import { z } from 'zod';
+import { getAuthUser } from '../utils/auth';
 
 export async function classroomRoutes(app: FastifyInstance) {
   // Get user's classrooms
   app.get('/', { preHandler: [app.authenticate] }, async (request, reply) => {
+    const user = getAuthUser(request);
     const classrooms = await app.prisma.classroom.findMany({
       where: {
         OR: [
-          { teacherId: request.user.userId },
-          { students: { some: { userId: request.user.userId } } },
+          { teacherId: user.userId },
+          { students: { some: { userId: user.userId } } },
         ],
       },
       include: {
@@ -24,7 +26,8 @@ export async function classroomRoutes(app: FastifyInstance) {
 
   // Create classroom
   app.post('/', { preHandler: [app.authenticate] }, async (request, reply) => {
-    if (request.user.role !== 'EDUCATOR' && request.user.role !== 'ADMIN') {
+    const user = getAuthUser(request);
+    if (user.role !== 'EDUCATOR' && user.role !== 'ADMIN') {
       return reply.code(403).send({ error: 'Only educators can create classrooms' });
     }
 
@@ -37,7 +40,7 @@ export async function classroomRoutes(app: FastifyInstance) {
     const classroom = await app.prisma.classroom.create({
       data: {
         ...data,
-        teacherId: request.user.userId,
+        teacherId: user.userId,
       },
       include: { teacher: { select: { id: true, name: true } } },
     });
@@ -47,14 +50,15 @@ export async function classroomRoutes(app: FastifyInstance) {
 
   // Get classroom details
   app.get('/:id', { preHandler: [app.authenticate] }, async (request, reply) => {
+    const user = getAuthUser(request);
     const { id } = z.object({ id: z.string().cuid() }).parse(request.params);
 
     const classroom = await app.prisma.classroom.findFirst({
       where: {
         id,
         OR: [
-          { teacherId: request.user.userId },
-          { students: { some: { userId: request.user.userId } } },
+          { teacherId: user.userId },
+          { students: { some: { userId: user.userId } } },
         ],
       },
       include: {
@@ -73,6 +77,7 @@ export async function classroomRoutes(app: FastifyInstance) {
 
   // Join classroom (student)
   app.post('/:id/join', { preHandler: [app.authenticate] }, async (request, reply) => {
+    const user = getAuthUser(request);
     const { id } = z.object({ id: z.string().cuid() }).parse(request.params);
 
     const classroom = await app.prisma.classroom.findUnique({ where: { id } });
@@ -81,7 +86,7 @@ export async function classroomRoutes(app: FastifyInstance) {
     }
 
     const existing = await app.prisma.classroomStudent.findUnique({
-      where: { classroomId_userId: { classroomId: id, userId: request.user.userId } },
+      where: { classroomId_userId: { classroomId: id, userId: user.userId } },
     });
 
     if (existing) {
@@ -89,7 +94,7 @@ export async function classroomRoutes(app: FastifyInstance) {
     }
 
     const enrollment = await app.prisma.classroomStudent.create({
-      data: { classroomId: id, userId: request.user.userId },
+      data: { classroomId: id, userId: user.userId },
       include: { user: { select: { id: true, name: true, email: true } } },
     });
 
@@ -109,10 +114,11 @@ export async function classroomRoutes(app: FastifyInstance) {
   });
 
   app.post('/:id/assignments', { preHandler: [app.authenticate] }, async (request, reply) => {
+    const user = getAuthUser(request);
     const { id } = z.object({ id: z.string().cuid() }).parse(request.params);
 
     const classroom = await app.prisma.classroom.findFirst({
-      where: { id, teacherId: request.user.userId },
+      where: { id, teacherId: user.userId },
     });
 
     if (!classroom) {

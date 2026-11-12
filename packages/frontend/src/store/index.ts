@@ -365,6 +365,8 @@ export const useUIStore = create<UIState>()(
       }),
       { name: 'wokvi-ui' }
     ),
-    { name: 'ui-store' }
-  )
-);
+{ name: 'ui-store' }
+    )
+  );
+
+export { useModeStore } from './modeStore';
