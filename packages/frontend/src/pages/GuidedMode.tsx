@@ -17,7 +17,7 @@ const boards = [
   { id: 'arduino-uno', name: 'Arduino Uno R3', chip: 'ATmega328P', pins: 20, features: ['16MHz', 'Classic', 'Beginner-friendly'] },
   { id: 'arduino-nano', name: 'Arduino Nano', chip: 'ATmega328P', pins: 22, features: ['16MHz', 'Breadboard-friendly', 'Compact'] },
   { id: 'raspberry-pi-pico', name: 'Raspberry Pi Pico', chip: 'RP2040', pins: 26, features: ['Dual-core', '133MHz', 'Low cost'] },
-  { id: 'stm32-nucleo', name: 'STM32 Nucleo', chip: 'STM32F4', pins: 50+, features: ['Cortex-M4', '168MHz', 'Professional'] },
+  { id: 'stm32-nucleo', name: 'STM32 Nucleo', chip: 'STM32F4', pins: 50, features: ['Cortex-M4', '168MHz', 'Professional'] },
 ];
 
 const componentCategories = [

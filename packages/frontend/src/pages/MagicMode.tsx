@@ -144,7 +144,7 @@ export function MagicMode() {
                   handleGenerate();
                 }
               }}
-              placeholder="e.g., \"Weather station with BME280 sensor and OLED display that sends data to MQTT\""
+              placeholder='e.g., "Weather station with BME280 sensor and OLED display that sends data to MQTT"'
               rows={4}
               className="w-full px-4 py-4 text-lg border-2 border-surface-200 dark:border-surface-700 rounded-xl bg-white dark:bg-surface-900 focus:border-primary-500 focus:outline-none focus:ring-2 focus:ring-primary-500/20 resize-none font-medium"
               disabled={isGenerating}
