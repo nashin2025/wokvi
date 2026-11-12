@@ -1,0 +1,228 @@
+// Prisma Schema for Wokvi
+// Run `pnpm db:generate` after changes
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id            String    @id @default(cuid())
+  email         String    @unique
+  name          String
+  passwordHash  String    @map("password_hash")
+  avatar        String?
+  role          Role      @default(USER)
+  preferences   Json      @default("{}")
+  createdAt     DateTime  @default(now()) @map("created_at")
+  updatedAt     DateTime  @updatedAt @map("updated_at")
+
+  projects      Project[]
+  collaborations Collaboration[]
+  classrooms    Classroom[] @relation("TeacherClassrooms")
+  enrollments   ClassroomStudent[] @relation("StudentEnrollments")
+  assignments   Assignment[]
+  submissions   AssignmentSubmission[]
+
+  @@map("users")
+}
+
+enum Role {
+  USER
+  EDUCATOR
+  ADMIN
+}
+
+model Project {
+  id              String    @id @default(cuid())
+  name            String
+  description     String?
+  mode            Mode      @default(MAGIC)
+  board           BoardType @default(ESP32_DEVKIT)
+  components      Json      @default("[]")
+  wires           Json      @default("[]")
+  code            String    @default("")
+  simulationConfig Json     @default("{}") @map("simulation_config")
+  isPublic        Boolean   @default(false) @map("is_public")
+  tags            String[]  @default([])
+  ownerId         String    @map("owner_id")
+  createdAt       DateTime  @default(now()) @map("created_at")
+  updatedAt       DateTime  @updatedAt @map("updated_at")
+
+  owner           User      @relation(fields: [ownerId], references: [id], onDelete: Cascade)
+  collaborators   Collaboration[]
+  versions        ProjectVersion[]
+
+  @@map("projects")
+}
+
+enum Mode {
+  MAGIC
+  GUIDED
+  PRO
+}
+
+enum BoardType {
+  ARDUINO_UNO
+  ARDUINO_NANO
+  ESP32_DEVKIT
+  ESP32_S3
+  RASPBERRY_PI_PICO
+  STM32_NUCLEO
+  CUSTOM
+}
+
+model Collaboration {
+  id        String   @id @default(cuid())
+  projectId String   @map("project_id")
+  userId    String   @map("user_id")
+  role      CollabRole @default(EDITOR)
+  joinedAt  DateTime @default(now()) @map("joined_at")
+
+  project   Project  @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([projectId, userId])
+  @@map("collaborations")
+}
+
+enum CollabRole {
+  OWNER
+  EDITOR
+  VIEWER
+}
+
+model ProjectVersion {
+  id        String   @id @default(cuid())
+  projectId String   @map("project_id")
+  version   Int
+  data      Json
+  message   String?
+  createdAt DateTime @default(now()) @map("created_at")
+
+  @@map("project_versions")
+}
+
+model Classroom {
+  id          String   @id @default(cuid())
+  name        String
+  description String?
+  teacherId   String   @map("teacher_id")
+  createdAt   DateTime @default(now()) @map("created_at")
+  updatedAt   DateTime @updatedAt @map("updated_at")
+
+  teacher     User     @relation("TeacherClassrooms", fields: [teacherId], references: [id], onDelete: Cascade)
+  students    ClassroomStudent[]
+  assignments Assignment[]
+
+  @@map("classrooms")
+}
+
+model ClassroomStudent {
+  id          String   @id @default(cuid())
+  classroomId String   @map("classroom_id")
+  userId      String   @map("user_id")
+  joinedAt    DateTime @default(now()) @map("joined_at")
+  progress    Json     @default("{}")
+
+  classroom   Classroom @relation(fields: [classroomId], references: [id], onDelete: Cascade)
+  user        User     @relation("StudentEnrollments", fields: [userId], references: [id], onDelete: Cascade)
+  submissions AssignmentSubmission[]
+
+  @@unique([classroomId, userId])
+  @@map("classroom_students")
+}
+
+model Assignment {
+  id              String   @id @default(cuid())
+  classroomId     String   @map("classroom_id")
+  title           String
+  description     String?
+  starterProjectId String?  @map("starter_project_id")
+  expectedBehavior Json    @default("[]") @map("expected_behavior")
+  dueDate         DateTime? @map("due_date")
+  maxScore        Int      @default(100) @map("max_score")
+  createdAt       DateTime @default(now()) @map("created_at")
+  updatedAt       DateTime @updatedAt @map("updated_at")
+
+  classroom       Classroom @relation(fields: [classroomId], references: [id], onDelete: Cascade)
+  submissions     AssignmentSubmission[]
+
+  @@map("assignments")
+}
+
+model AssignmentSubmission {
+  id            String   @id @default(cuid())
+  assignmentId  String   @map("assignment_id")
+  studentId     String   @map("student_id")
+  projectData   Json     @map("project_data")
+  simulationLog Json?    @map("simulation_log")
+  score         Float?
+  feedback      String?
+  status        SubmissionStatus @default(SUBMITTED)
+  submittedAt   DateTime @default(now()) @map("submitted_at")
+  gradedAt      DateTime? @map("graded_at")
+
+  assignment    Assignment @relation(fields: [assignmentId], references: [id], onDelete: Cascade)
+  student       ClassroomStudent @relation(fields: [studentId], references: [id], onDelete: Cascade)
+
+  @@map("assignment_submissions")
+}
+
+enum SubmissionStatus {
+  NOT_STARTED
+  IN_PROGRESS
+  SUBMITTED
+  GRADED
+}
+
+model Component {
+  id          String   @id @default(cuid())
+  type        String
+  name        String
+  category    ComponentCategory
+  pins        Json
+  footprint   Json
+  simulationModel Json? @map("simulation_model")
+  metadata    Json     @default("{}")
+  createdAt   DateTime @default(now()) @map("created_at")
+  updatedAt   DateTime @updatedAt @map("updated_at")
+
+  @@map("components")
+}
+
+enum ComponentCategory {
+  MICROCONTROLLER
+  SENSOR
+  ACTUATOR
+  DISPLAY
+  COMMUNICATION
+  POWER
+  PASSIVE
+  OTHER
+}
+
+model SimulationSession {
+  id        String   @id @default(cuid())
+  projectId String   @map("project_id")
+  userId    String   @map("user_id")
+  status    SessionStatus @default(STOPPED)
+  config    Json
+  logs      Json     @default("[]")
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  @@map("simulation_sessions")
+}
+
+enum SessionStatus {
+  STOPPED
+  RUNNING
+  PAUSED
+  ERROR
+  COMPLETED
+}
