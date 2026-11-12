@@ -1,7 +1,8 @@
 import { useUIStore, useSimulationStore } from '../store';
 import { Tabs, TabsList, TabsTrigger, TabsContent } from './ui/Tabs';
-import { Terminal, Bug, MessageSquare, X, Maximize2, Minimize2, Clear, Copy, Download } from 'lucide-react';
+import { Terminal, Bug, MessageSquare, X, Clear, Copy, Download, Users } from 'lucide-react';
 import { cn } from '../utils/cn';
+import { CollaborationPanel } from './CollaborationPanel';
 
 export function BottomPanel() {
   const { activeBottomTab, setActiveBottomTab, bottomPanelOpen, setBottomPanelOpen } = useUIStore();
@@ -26,6 +27,10 @@ export function BottomPanel() {
           <TabsTrigger value="ai">
             <MessageSquare className="h-4 w-4 mr-1" />
             AI Assistant
+          </TabsTrigger>
+          <TabsTrigger value="collab">
+            <Users className="h-4 w-4 mr-1" />
+            Collab
           </TabsTrigger>
         </TabsList>
 
@@ -61,6 +66,9 @@ export function BottomPanel() {
         </TabsContent>
         <TabsContent value="ai" className="h-full">
           <AIPanel />
+        </TabsContent>
+        <TabsContent value="collab" className="h-full">
+          <CollaborationPanel />
         </TabsContent>
       </div>
     </div>

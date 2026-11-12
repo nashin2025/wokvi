@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { useProjectStore, useUIStore } from '../store';
-import { Send, Zap, Loader2, AlertCircle, CheckCircle, FileText, Code, LayoutDashboard, Monitor } from 'lucide-react';
+import { Zap, Loader2, AlertCircle, CheckCircle, FileText, Code, LayoutDashboard, Monitor, ArrowRight } from 'lucide-react';
 import { cn } from '../utils/cn';
 
 export function MagicMode() {
@@ -117,7 +117,7 @@ export function MagicMode() {
             </div>
             <div className="flex gap-3">
               <button onClick={handleUseProject} className="btn-primary flex-1">
-                <Play className="h-4 w-4 mr-2" />
+                <ArrowRight className="h-4 w-4 mr-2" />
                 Open in Simulator
               </button>
               <button className="btn-secondary">

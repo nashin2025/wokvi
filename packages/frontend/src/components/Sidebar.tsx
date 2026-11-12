@@ -3,29 +3,28 @@ import {
   Search,
   ChevronDown,
   ChevronRight,
-  Microchip,
+  Cpu,
   Thermometer,
-  Motor,
+  Zap,
   Monitor,
   Wifi,
   Battery,
-  Resistor,
-  Box,
-  Filter,
+  GitBranch,
+  Package,
   X,
 } from 'lucide-react';
 import { cn } from '../utils/cn';
 import { ComponentCategory } from '../types';
 
 const categoryIcons: Record<ComponentCategory, React.ReactNode> = {
-  microcontroller: <Microchip className="h-4 w-4" />,
+  microcontroller: <Cpu className="h-4 w-4" />,
   sensor: <Thermometer className="h-4 w-4" />,
-  actuator: <Motor className="h-4 w-4" />,
+  actuator: <Zap className="h-4 w-4" />,
   display: <Monitor className="h-4 w-4" />,
   communication: <Wifi className="h-4 w-4" />,
   power: <Battery className="h-4 w-4" />,
-  passive: <Resistor className="h-4 w-4" />,
-  other: <Box className="h-4 w-4" />,
+  passive: <GitBranch className="h-4 w-4" />,
+  other: <Package className="h-4 w-4" />,
 };
 
 const categoryLabels: Record<ComponentCategory, string> = {

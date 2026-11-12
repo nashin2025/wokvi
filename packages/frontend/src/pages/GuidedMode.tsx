@@ -1,11 +1,11 @@
 import { useState } from 'react';
 import { useProjectStore, useUIStore } from '../store';
-import { ArrowRight, ArrowLeft, Check, ChevronDown, Microchip, Thermometer, Motor, Monitor, Wifi, Battery, Resistor, Box, Plus, X, Search, Zap } from 'lucide-react';
+import { ArrowRight, ArrowLeft, Check, ChevronDown, Cpu, Thermometer, Zap, Monitor, Wifi, Battery, GitBranch, Package, Plus, X, Search } from 'lucide-react';
 import { cn } from '../utils/cn';
 
 const steps = [
-  { id: 'board', title: 'Select Board', icon: Microchip, description: 'Choose your microcontroller' },
-  { id: 'components', title: 'Add Components', icon: Box, description: 'Pick sensors, displays, actuators' },
+  { id: 'board', title: 'Select Board', icon: Cpu, description: 'Choose your microcontroller' },
+  { id: 'components', title: 'Add Components', icon: Package, description: 'Pick sensors, displays, actuators' },
   { id: 'wiring', title: 'Wire It Up', icon: Zap, description: 'AI-assisted breadboard wiring' },
   { id: 'code', title: 'Generate Code', icon: Zap, description: 'AI generates firmware' },
   { id: 'simulate', title: 'Simulate', icon: Monitor, description: 'Run and test your project' },

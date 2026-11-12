@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useUserStore } from '../store';
-import { Zap, Mail, Lock, User, Github, Google } from 'lucide-react';
+import { Zap, Mail, Lock, User, Github, Chrome } from 'lucide-react';
 import { cn } from '../utils/cn';
 
 export function Login() {
@@ -85,7 +85,7 @@ export function Login() {
             onClick={() => handleOAuth('google')}
             className="btn-secondary flex items-center justify-center gap-2"
           >
-            <Google className="h-5 w-5" />
+            <Chrome className="h-5 w-5" />
             Google
           </button>
         </div>

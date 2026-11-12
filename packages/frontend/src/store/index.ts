@@ -331,42 +331,70 @@ interface UIState {
   sidebarOpen: boolean;
   rightPanelOpen: boolean;
   bottomPanelOpen: boolean;
-  activeBottomTab: 'terminal' | 'debug' | 'console' | 'ai';
+  activeBottomTab: 'terminal' | 'debug' | 'console' | 'ai' | 'collab';
   theme: 'light' | 'dark' | 'system';
+  collabOpen: boolean;
+  collabConnected: boolean;
+  collabUsers: any[];
+  aiMessages: any[];
+  aiInput: string;
+  aiLoading: boolean;
+  expandedCategories: Record<string, boolean>;
   setSidebarOpen: (open: boolean) => void;
   setRightPanelOpen: (open: boolean) => void;
   setBottomPanelOpen: (open: boolean) => void;
   setActiveBottomTab: (tab: UIState['activeBottomTab']) => void;
   setTheme: (theme: UIState['theme']) => void;
+  setCollabOpen: (open: boolean) => void;
+  setCollabConnected: (connected: boolean) => void;
+  setCollabUsers: (users: any[]) => void;
+  setAiMessages: (messages: any[]) => void;
+  setAiInput: (input: string) => void;
+  setAiLoading: (loading: boolean) => void;
   toggleSidebar: () => void;
   toggleRightPanel: () => void;
   toggleBottomPanel: () => void;
+  toggleCollab: () => void;
 }
 
 export const useUIStore = create<UIState>()(
   devtools(
     persist(
-      (set, get) => ({
+(set, get) => ({
         sidebarOpen: true,
         rightPanelOpen: false,
         bottomPanelOpen: true,
         activeBottomTab: 'terminal',
         theme: 'system',
+        collabOpen: false,
+        collabConnected: false,
+        collabUsers: [],
+        aiMessages: [],
+        aiInput: '',
+        aiLoading: false,
+        expandedCategories: {},
 
         setSidebarOpen: (open) => set({ sidebarOpen: open }),
         setRightPanelOpen: (open) => set({ rightPanelOpen: open }),
         setBottomPanelOpen: (open) => set({ bottomPanelOpen: open }),
         setActiveBottomTab: (tab) => set({ activeBottomTab: tab }),
         setTheme: (theme) => set({ theme }),
+        setCollabOpen: (open) => set({ collabOpen: open }),
+        setCollabConnected: (connected) => set({ collabConnected: connected }),
+        setCollabUsers: (users) => set({ collabUsers: users }),
+        setAiMessages: (messages) => set({ aiMessages: messages }),
+        setAiInput: (input) => set({ aiInput: input }),
+        setAiLoading: (loading) => set({ aiLoading: loading }),
 
         toggleSidebar: () => set((state) => ({ sidebarOpen: !state.sidebarOpen })),
         toggleRightPanel: () => set((state) => ({ rightPanelOpen: !state.rightPanelOpen })),
         toggleBottomPanel: () => set((state) => ({ bottomPanelOpen: !state.bottomPanelOpen })),
+        toggleCollab: () => set((state) => ({ collabOpen: !state.collabOpen })),
       }),
       { name: 'wokvi-ui' }
     ),
-{ name: 'ui-store' }
-    )
-  );
+  { name: 'ui-store' }
+  )
+);
 
 export { useModeStore } from './modeStore';

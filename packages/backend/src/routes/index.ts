@@ -5,6 +5,7 @@ import { componentRoutes } from './components.js';
 import { classroomRoutes } from './classrooms.js';
 import { simulationRoutes } from './simulation.js';
 import { aiRoutes } from './ai.js';
+import { collaborationRoutes } from './collaboration.js';
 
 export async function registerRoutes(app: FastifyInstance) {
   // API prefix
@@ -15,5 +16,6 @@ export async function registerRoutes(app: FastifyInstance) {
     api.register(classroomRoutes, { prefix: '/classrooms' });
     api.register(simulationRoutes, { prefix: '/simulation' });
     api.register(aiRoutes, { prefix: '/ai' });
+    api.register(collaborationRoutes, { prefix: '/collab' });
   }, { prefix: '/api/v1' });
 }

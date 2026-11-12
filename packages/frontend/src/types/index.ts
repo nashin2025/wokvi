@@ -1,5 +1,11 @@
 export type Mode = 'magic' | 'guided' | 'pro';
 
+export type ComponentCategory = 
+  'microcontroller' | 'sensor' | 'actuator' | 'display' | 'communication' | 'power' | 'passive' | 'other';
+
+export type BoardType = 
+  'arduino-uno' | 'arduino-nano' | 'esp32-devkit' | 'esp32-s3' | 'raspberry-pi-pico' | 'stm32-nucleo' | 'custom';
+
 export interface Component {
   id: string;
   type: string;

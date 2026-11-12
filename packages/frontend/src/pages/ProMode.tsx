@@ -1,3 +1,4 @@
+import { useState } from 'react';
 import { useProjectStore, useUIStore } from '../store';
 import { Canvas } from '../components/Canvas';
 import { CodeEditor } from '../components/CodeEditor';

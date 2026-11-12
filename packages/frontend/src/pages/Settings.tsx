@@ -1,3 +1,4 @@
+import { useState, useEffect } from 'react';
 import { useUserStore, useUIStore } from '../store';
 import { User, Monitor, Palette, Keyboard, Save, Bell, Shield, Globe, Delete } from 'lucide-react';
 import { cn } from '../utils/cn';

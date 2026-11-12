@@ -2,26 +2,24 @@ import { useProjectStore, useSimulationStore, useUIStore } from '../store';
 import {
   Play,
   Pause,
-  Stop,
+  Square,
   RotateCcw,
   Download,
   Save,
   Settings,
   LayoutDashboard,
   Zap,
-  Bug,
   MessageSquare,
   ChevronLeft,
   ChevronRight,
   PanelLeft,
   PanelRight,
   PanelBottom,
-  HelpCircle,
   Sun,
   Moon,
   Monitor,
-  Smartphone,
-  Tablet,
+  Users,
+  Share2,
 } from 'lucide-react';
 import { cn } from '../utils/cn';
 import { useModeStore } from '../store/modeStore';
@@ -125,7 +123,7 @@ export function Toolbar() {
           title="Stop Simulation (Shift+Space)"
           disabled={simState.status === 'stopped'}
         >
-          <Stop className="h-5 w-5" />
+          <Square className="h-5 w-5" />
         </button>
 
         <div className="w-px h-6 bg-surface-200 dark:bg-surface-700 mx-2" />
@@ -199,6 +197,18 @@ export function Toolbar() {
           <MessageSquare className="h-5 w-5" />
           <span className="absolute -top-1 -right-1 flex h-4 w-4 items-center justify-center rounded-full bg-primary-600 text-[10px] font-bold text-white">
             AI
+          </span>
+        </button>
+
+        {/* Collaboration Toggle */}
+        <button
+          onClick={() => useUIStore.getState().setActiveBottomTab('collab')}
+          className={cn('toolbar-btn relative', useUIStore.getState().activeBottomTab === 'collab' && 'toolbar-btn-active')}
+          title="Collaboration (Ctrl+Shift+C)"
+        >
+          <Users className="h-5 w-5" />
+          <span className="absolute -top-1 -right-1 flex h-4 w-4 items-center justify-center rounded-full bg-green-600 text-[10px] font-bold text-white">
+            👥
           </span>
         </button>
       </div>
